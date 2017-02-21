@@ -1,9 +1,6 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
-author: Eva Yifan Gong
+title: "Reproducible Research Assignment 1"
+output: html_document
 ---
 
 ## Loading and preprocessing the data
