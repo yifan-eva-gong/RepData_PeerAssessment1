@@ -3,23 +3,82 @@ title: "Reproducible Research: Peer Assessment 1"
 output: 
   html_document:
     keep_md: true
+author: Eva Yifan Gong
 ---
 
-
 ## Loading and preprocessing the data
-
-
+In initial processing of the data, I remove NAs and transform `date` variable into Date object.
+```{r}
+library(dplyr)
+data=read.csv("./Data/activity.csv")
+data$date <-as.Date(data$date)
+data_cleaned <- data[complete.cases(data$step),] #remove NAs
+```
 
 ## What is mean total number of steps taken per day?
-
+The mean total number of steps taken per day is `10766.19`, and the median is `10765`.
+```{r}
+step_per_day <- data_cleaned %>%
+  group_by(date) %>%
+  summarize(total=sum(steps,na.rm=TRUE))
+hist(step_per_day$total)
+mean(step_per_day$total)
+median(step_per_day$total)
+```
 
 
 ## What is the average daily activity pattern?
-
+Interval at `835` contains the maximum amount of steps taken during that 5 min.
+```{r}
+step_per_interval <- data_cleaned %>%
+  group_by(interval) %>%
+  summarize(avg=mean(steps))
+plot.ts(step_per_interval$avg,ylab="Average Number of Steps Taken")  
+step_per_interval$interval[step_per_interval$avg==max(step_per_interval$avg)]
+```
 
 
 ## Imputing missing values
-
-
+To impute missing values, I replace NAs with the average amount of steps taken during that time interval across all observations. The new mean remains the same, and the new median changes to ` 10766.19`, the same as the mean. There aren't significant changes in the histogram, although the new one has more data distributed at the center.
+```{r}
+nas <- filter(data,is.na(steps))
+dim(nas)[1]
+rest <- filter(data,!is.na(steps))
+imputed <- merge (nas,step_per_interval)
+replaced <- data.frame(steps=imputed$avg,date=as.factor(imputed$date),interval=imputed$interval)
+new_data <- rbind(rest,replaced)
+step_per_day_new <- new_data %>%
+  group_by(date) %>%
+  summarize(total=sum(steps))
+hist(step_per_day_new$total)
+mean(step_per_day_new$total)
+median(step_per_day_new$total)
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+As shown in the plot below, during weekdays there are more steps taken earlier in the day, whereas during weekends they are more evenly distributed across the day.
+```{r}
+new_data$date <- as.Date(new_data$date)
+new_data$weekday <- weekdays(new_data$date)
+new_data$if_weekday <- "weekday"
+new_data$if_weekday[new_data$weekday=='Saturday']="weekend"
+new_data$if_weekday[new_data$weekday=='Sunday']="weekend"
+new_data$if_weekday <- factor(new_data$if_weekday)
+step_per_interval_week <- new_data %>%
+  group_by(if_weekday,interval) %>%
+  summarize(avg=mean(steps))
+#sub1 <- filter(step_per_interval_week,if_weekday=='weekday')
+#sub2 <- filter(step_per_interval_week,if_weekday=='weekend')
+#plot.ts(sub1$avg,ylab="Average Number of Steps Taken")  
+#plot.ts(sub2$avg,ylab="Average Number of Steps Taken")  
+```
+
+```{r}
+library(ggplot2)
+g<- ggplot(step_per_interval_week, aes(x =interval , y=avg, color=if_weekday)) +
+       geom_line() +
+       labs(title = "Average Steps Per Day", x = "Interval", y = "Avg Steps") +
+       facet_wrap(~if_weekday, ncol = 1, nrow=2)
+g
+```
+
